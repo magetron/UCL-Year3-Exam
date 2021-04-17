@@ -1,0 +1,97 @@
+
+\documentclass[12pt,letterpaper]{article}
+\usepackage{fullpage}
+\usepackage{lscape}
+\usepackage[top=2cm, bottom=4.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{amsmath,amsthm,amsfonts,amssymb,amscd}
+\usepackage{lastpage}
+\usepackage{enumerate}
+\usepackage{fancyhdr}
+\usepackage{mathrsfs}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{hyperref}
+
+\hypersetup{%
+  colorlinks=true,
+  linkcolor=blue,
+  linkbordercolor={0 0 1}
+}
+
+\lstdefinestyle{C++}{
+    language        = C++,
+    frame           = lines, 
+    basicstyle      = \footnotesize,
+    keywordstyle    = \color{blue},
+    stringstyle     = \color{olive},
+    commentstyle    = \color{red}\ttfamily,
+    breaklines      = true,
+    tabsize         = 2
+}
+
+\setlength{\parindent}{0.0in}
+\setlength{\parskip}{0.05in}
+
+
+\newcommand\course{COMP0023}
+\newcommand\hwnumber{}                   
+\newcommand\NetIDa{17134402}            \newcommand\NetIDb{-}            
+\pagestyle{fancyplain}
+\headheight 35pt
+\lhead{\NetIDa}
+\lhead{\NetIDa\\\NetIDb}                 
+\chead{\textbf{\Large Assessment \hwnumber}}
+\rhead{\course \\ \today}
+\lfoot{}
+\cfoot{}
+\rfoot{\small\thepage}
+\headsep 1.5em
+
+\graphicspath{{./images/}}
+
+\begin{document}
+
+\section{}
+
+\subsection{Single Packet Perspective}
+
+With regards to any bit errors or packet corruptions, each network layer will have their separate effort to control and correct error at their best effort.
+
+\subsubsection{Physical Layer L1}
+
+Errors are detected on the link via Error Control Coding (ECC), and can potentially further corrected by Forward Error Correction (FEC) methods. 
+
+As of ECC, slower Ethernet specifications (Fast Ethernet, and Gigabit Ethernet), have limited error detection methods. For example, 8b/10b encoding used in Gigabit Ethernet does allow detecting single-bit errors, but not correcting them. 
+
+Later developments of faster Ethernet specifications includes ECC methods and even optional FEC sublayer. Take IEEE 802.3ap for example, 10GBASE-R PHYs uses the 64b/66b encoding which provides at least a 4-bit Hamming distance protection for all packet data. Moreover, Clause 74 specifies an optional FEC(2112, 2080) sublayer for 10GBASE-R PHYs. The FEC(2112, 2080) burst FEC is a shortented cyclic code with 32 parity bits, appended to 32 64-bit payload words (65-bit actual payload), hence the $32*(64 + 1) + 32 = 2112$.
+
+Furthermore, higher symbol rate PHY links have much stronger FEC methods in place. IEEE 802.3bj describing 100G backplane PHY links deems FEC mandatory in its higher bit rate or longer distance connections.
+
+In all, at a PHY level, a packet with minimal bit errors can potentially be corrected. If larger and longer burst errors happened on the link, the PHY might deem certain received encoding invalid and discard the packet altogether.
+
+\subsection{Link Layer 2}
+
+
+
+\subsection{End-To-End Perspective}
+
+
+
+Upon typing the URL \url{www.ucl.ac.uk} into the browser, the laptop would follow the below steps:
+
+\subsection{DNS transactions}
+
+\begin{itemize}
+    \item Laptop looks up the DNS information of the URL in cache, since it's a new one, it would not be found
+    \item Laptop sends a DNS request to the configured DNS server, usually a local DNS resolver, a public DNS resolver, or a ISP DNS resolver
+    \item If found, the DNS reply containing \url{www.ucl.ac.uk}'s IP address would be replied to the laptop
+    \item If not found, the DNS resolver would start resolving \url{www.ucl.ac.uk} from the root servers, all the way down to the authoritative nameservers (i.e. \url{dns-ns1.ucl.ac.uk}).
+    \item Similarly, a DNS reply of \url{www.ucl.ac.uk} would be responded to the laptop.
+\end{itemize}
+
+\subsection{}
+
+
+\end{document}
