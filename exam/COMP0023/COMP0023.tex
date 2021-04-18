@@ -88,7 +88,7 @@ Although there are several types of research regarding using CRC to do error cor
 
 \subsubsection{Network Layer L3 and Transport Layer L4}
 
-In Internet Protocol version 4 (IPv4), its checksum is a 1's complement checksum operating upon the IP header only. Its primary purpose is to ensure correctness in a multi-hop environment. It aims to detect errors in switches and intermediate machines, which could potentially alter the IP header during packet transmission.
+In Internet Protocol version 4 (IPv4), its checksum is a 1's complement checksum operating upon the IP header only. Its primary purpose is to ensure correctness in a multi-hop environment. It aims to detect errors in intermediate machines, which could potentially alter the IP header during packet transmission.
 
 The TCP checksum is also 1's complement. It is enforced upon the TCP header, the TCP payload, and an IP pseudo-header. The IP pseudo-header includes the src/dst IP, TCP protocol number $\mathtt{0x06}$, and the IP size field from the lower level. It is meant to be an End-to-End (E2E) verification of the packet's integrity.
 
@@ -150,6 +150,7 @@ Suppose the fourth ACK (corresponding to server FIN) corrupts; the laptop would 
 In the rare case where the packet error is not detected, the serving application might receive a corrupted request. Typically, the HTTP request would be an invalid one. In the extreme case where the corrupted HTTP request is valid and contains a different URL, the server might respond with a 404 or with a wrong page. The server behaviour would be unpredictable in this case.
 
 
+\newpage
 \section{}
 
 \renewcommand{\thesubsection}{\thesection.\alph{subsection}}
@@ -169,6 +170,28 @@ In the rare case where the packet error is not detected, the serving application
 \end{figure}
 
 \subsection{}
+
+
+C2 -> C1 -> E7
+C1 -> C2 -> E4 5.0.0.0/8
+
+
+
+
+
+AS-PATH length
+
+if E9->C1->C2->E5, that implies AS1 has better AS-PATH length
+
+then not possible to do E5->C2->C1->E9
+
+vice versa, if E5->C2->C1->C9, AS1 must have 
+
+i.e. 1.0.0.0/8
+
+
+
+
 
 
 
