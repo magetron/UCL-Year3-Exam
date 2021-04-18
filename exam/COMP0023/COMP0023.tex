@@ -1,5 +1,4 @@
-
-\documentclass[12pt,letterpaper]{article}
+\documentclass[12pt]{article}
 \usepackage{fullpage}
 \usepackage{lscape}
 \usepackage[top=2cm, bottom=4.5cm, left=2.5cm, right=2.5cm]{geometry}
@@ -41,6 +40,7 @@
 \setlength{\parindent}{0.0in}
 \setlength{\parskip}{0.05in}
 
+\newcommand\code{\url}
 \newcommand\course{COMP0023}
 \newcommand\hwnumber{}                   
 \newcommand\NetIDa{17134402}            \newcommand\NetIDb{-}            
@@ -63,7 +63,7 @@
 
 \subsection{Single Packet Perspective}
 
-With regards to any bit errors or packet corruptions, each network layer will have their separate effort to control and correct error at their best effort.
+With regards to any bit errors or packet corruptions, each network layer will have their separate effort to detect and correct error.
 
 \subsubsection{Physical Layer L1}
 
@@ -71,7 +71,7 @@ Errors are detected on the link via Error Control Coding (ECC), and can potentia
 
 As of ECC, slower Ethernet specifications (Fast Ethernet, and Gigabit Ethernet), have limited error detection methods. For example, 8b/10b encoding used in Gigabit Ethernet does allow detecting single-bit errors, but not correcting them. 
 
-Later developments of faster Ethernet specifications includes ECC methods and even optional FEC sublayer. Take IEEE 802.3ap for example, 10GBASE-R PHYs uses the 64b/66b encoding which provides at least a 4-bit Hamming distance protection for all packet data. Moreover, Clause 74 specifies an optional FEC(2112, 2080) sublayer for 10GBASE-R PHYs. The FEC(2112, 2080) burst FEC is a shortented cyclic code with 32 parity bits, appended to 32 64-bit payload words (65-bit actual payload), hence the $32*(64 + 1) + 32 = 2112$.
+Later developments of faster Ethernet specifications includes ECC methods and even optional FEC sublayer. Take IEEE 802.3ap for example, 10GBASE-R PHYs uses the 64b/66b encoding which provides at least a 4-bit hamming distance protection for all packet data. Moreover, Clause 74 specifies an optional RS-FEC(2112, 2080) sublayer using the Reed–Solomon error correction algorithm for 10GBASE-R PHYs. It is in essence a shortented cyclic code with 32 parity bits, appended to 32 64-bit payload words (65-bit actual payload), hence the $32*(64 + 1) + 32 = 2112$.
 
 Furthermore, higher symbol rate PHY links have much stronger FEC methods in place. IEEE 802.3bj describing 100G backplane PHY links deems FEC mandatory in its higher bit rate or longer distance connections.
 
@@ -104,13 +104,15 @@ In both ways, if the one's complement detects an error, the packet would most li
 
 \subsubsection{Summary}
 
-In conclusion, the corrupted packet, if not severe, can be potentially corrected on the PHY link given FEC is in-place. If not, as well as error detected on L2, L3 and L4, the packet would be discarded. In the worst case that the corrupted bits in ordered in a particular way that escapes ECC in all 4 layers, the packet will be passed on to the destination host's application.
+In conclusion, the corrupted packet, if not severe, can be potentially corrected on the PHY link given FEC is in-place. If not, or if there is error detected on L2, L3 and L4, the packet would be discarded. In the worst case that the corrupted bits are ordered in a particular way that escapes ECC in all 4 layers, the packet will be passed on to the destination host's application.
 
 \subsection{End-To-End Perspective}
 
-Upon typing the URL \url{www.ucl.ac.uk} into the browser, the laptop would first query the DNS to obtain the URL's IP address. For the sake of simplicity, we assume the domain operates with DNS instead of DNSSEC. However, DNSSEC verifies the message authenticity and the bit corruptions would impact its payload in roughly the same way as DNS.
+In the following discussions, we will divide the each section into whether the corrupted bit is detected or not in the ECCs of L1-L4.
 
 \subsubsection{DNS transactions}
+
+Upon typing the URL \url{www.ucl.ac.uk} into the browser, the laptop would first query the DNS to obtain the URL's IP address. For the sake of simplicity, we assume the domain operates with DNS instead of DNSSEC. However, DNSSEC verifies the message authenticity and the bit corruptions would impact its payload in roughly the same way as DNS.
 
 \begin{itemize}
     \item Laptop looks up the DNS information of the URL in cache, since it's a new one, it would not be found
@@ -126,25 +128,48 @@ In this process, as suggested, the packet would most likely be discarded by a sw
 
 \paragraph{Packet Error Not Detected}
 
-In the rare case where the bits corrupted evades all the checksums measures, resulting in either an invalid DNS query, or a DNS query targetting a different domain. The common case would be an invalid DNS query, for example an invalid Flags field. The name server or resolver shall detect this and drop this invalid DNS query. The rarer case would be the request reaching a entirely different authoritative server, and getting either a \url{NXDOMAIN} reply or a reply about different domain (i.e. \url{www.ual.ac.uk}).
+In the rare case where the bits corrupted evades all the checksums measures, resulting in either an invalid DNS query, or a DNS query targetting a different domain. The common case would be an invalid DNS query, for example an invalid Flags field. The name server or resolver shall detect this and drop this invalid DNS query. The rarer case would be the request reaching a entirely different authoritative server, and getting either a \url{NXDOMAIN} reply or a reply about different domain (i.e. \url{www.ual.ac.uk}). The laptop would found the reply not related to its question. Hence, re-querying the DNS of \url{www.ucl.ac.uk}.
 
 \subsubsection{HTTP transactions}
 
-Generally speaking, \url{www.ucl.ac.uk} visiting in browser shall serve HTTP webpages (certainly not Gopher). Although UCL's HTTP server only operates on HTTP/1.1, \url{www.ucl.ac.uk/} webpage also includes information served by Cloudlflare's CDN through HTTP/3. It's notable that visiting https webpage through HTTP/3 is based on QUIC/UDP/IP stack, while HTTP/1.1 is based on a TLS/TCP/IP stack. In this question, we limit the scope to HTTP/TLS/TCP/IP stack. However, QUIC/UDP is generally comparable to TCP/IP and the analysis shall be largely similar.
-
-In the following discussions, we will divide the section into whether the corrupted bit is detected or not in the ECCs of L1-L4.
+Generally speaking, \url{www.ucl.ac.uk} being visited in a laptop browser shall be HTTP webpages (certainly not Gopher). Although UCL's HTTP server only operates on HTTP/1.1, \url{www.ucl.ac.uk/} webpage also includes content served by Cloudlflare's CDN through HTTP/3, optionally. It's notable that visiting a webpage through HTTP/3 is based on QUIC/UDP/IP stack, while HTTP/1.1 is based on a TCP/IP stack. In this question, we limit the scope to HTTP/(TLS)/TCP/IP stack. However, QUIC/UDP is generally comparable to TCP/IP and the analysis shall be largely similar. Also, we will make an reasonable assumption of using HTTP in this case (not secure).
 
 \paragraph{Packet Error Detected}
 
-The TCP connection establishment is comprised of three handshakes. In the case where the laptop's packet corrupted on the first SYN or the third ACK, the server would just not proceed, until the RTX timer runs out on the laptop and resends a SYN.
+The TCP connection establishment is comprised of three handshakes. In the case where the laptop's packet corrupted on the first SYN or the third ACK, the server would just not proceed, until the RTX timer runs out on the laptop and resends a SYN or ACK respectively.
 
-During the transmission process, if any of the laptop's packet is corrupted in the middle, the RTX timer could just simply timeout and the laptop would attempt to retransmit until successful.
+During the transmission process, if any of the laptop's packet is corrupted in the middle, the RTX timer could just simply timeout as the corresponding ACK will not be received. Thus, the laptop would attempt to retransmit until successful.
 
-The TCP connection tear down is comprised of four handshakes. In the case where the first FIN from laptop gets corrupted, the server would not ACK the FIN and proceed with connection established. After the RTX timeout, the laptop would re-attempt to transmit the FIN packet. The special case lies in the corruption of the fourth ACK to server FIN from the laptop. At this time, the laptop would have entered a TIME\_WAIT state, expecting to close the connection after 2 MSLs. However, the server, not knowing its FIN is ACKed by the laptop but lost due to bit corruptions, would eventually reach RTX timeout. The server would retransmit a FIN to the laptop, which shall reach the laptop before it fully closes the connection. The laptop will then retransmit the corrupted ACK to the server and successfully close the connection.
+The TCP connection tear down is comprised of four handshakes. In the case where the first FIN from laptop gets corrupted, the server would not know the attempt to tear down connection, and surely would not reply with an ACK. After the RTX timeout, the laptop would re-attempt to transmit the FIN packet.
+
+The special case lies in the corruption of the fourth ACK (corresponding to server FIN) from the laptop. At this time, the laptop would have entered a TIME\_WAIT state, expecting to close the connection after 2 Maximum Segment Lifetimes (MSLs). However, the server, not knowing its FIN is ACKed by the laptop but lost due to bit corruptions, would eventually reach RTX timeout. The server would retransmit a FIN to the laptop, which shall reach the laptop during TIME\_WAIT. The laptop will then retransmit the corrupted ACK to the server and successfully close the connection.
 
 \paragraph{Packet Error Not Detected}
 
-In the rare case where the packet error is not detected, the serving application might receive a corrupted request. Typically, the HTTP/HTTPS request would be an invalid one. In the extreme case where the corrupted HTTP/HTTPS request is valid, and contains a different but existing URL, the server might respond with a different webpage as intended.
+In the rare case where the packet error is not detected, the serving application might receive a corrupted request. Typically, the HTTP request would be an invalid one. In the extreme case where the corrupted HTTP request is valid, and contains a different URL, the server might respond with a HTTP error code (404), or with a different webpage as specified in the corrupted packet. The server behaviour would be unpredictable in this case.
+
+
+\section{}
+
+\renewcommand{\thesubsection}{\thesection.\alph{subsection}}
+
+\subsection{}
+
+\begin{figure}[h!]
+  \makebox[\textwidth][c]{\includegraphics[width=\textwidth]{imgs/python-script-screenshot.png}}
+  \caption{Python Script Screenshot}
+  \label{fig:python-screenshot}
+\end{figure}
+
+\begin{figure}[h!]
+  \makebox[\textwidth][c]{\includegraphics[width=1.1\textwidth]{imgs/topology.png}}
+  \caption{Topology}
+  \label{fig:topology}
+\end{figure}
+
+\subsection{}
+
+
 
 
 \end{document}
