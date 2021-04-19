@@ -20,6 +20,10 @@
 
 \definecolor{mygray}{gray}{0.6}
 
+\newcommand{\SubItem}[1]{
+    {\setlength\itemindent{15pt} \item[-] #1}
+}
+
 \newcommand\twoitems[2]{%
 \item#1%
 \hspace{20pt}%
@@ -213,12 +217,28 @@ Vice versa, the only underlying reasoning now would be: AS-PATH to $1.0.0.0/8$ i
 
 \subsection{}
 
-AVOID LOOPING
+In this section, we will be discussing changes made to BGP priority and IGP. These changes will only affect intra-domain routing.
 
-TAG IT, ROUND ROBIN ON UNTAGGED NEW PACKET, FORWARD TAGGED PACKET AS EXPECTED (DUE TO FULL MESH ROUTING COMMUNICATION), REMOVE TAG ON EXIT AS,
+In order to allow both paths to be configured simultaneously, we would have to enforce a routing protocol that does load balancing and allows multiple BGP egress point of the same IP address prefix. Therefore, we propose the following changes:
 
+\begin{itemize}
+    \item If no loop is detected through AS-PATH, consider both egress routes viable.
+    \item Incorporate multiple egress points of a certain IP address prefix within the routing table. Each egress point is given a score based on the AS-PATH; the longer the AS-PATH, the lower the score.
+    \item Consider a novel packet (either originated within the AS, or came into the AS through a border router):
+    \SubItem{Destined to a foreign IP prefix, the first router that sees the packet should use a probability generator with weight (score) to tag the packet's egress point.}
+    \SubItem{Destined to an IP within the AS, the first router would tag the packet with the destination router.}
+    \item Within the AS, only route packets based on router tag and disregard IP prefix.
+    \item On the packet reaching the internal destination, or exiting the AS, remove the packet destination tag.
+\end{itemize}
 
+For example, in this particular topology, we assume E5\textrightarrow{}AS1\textrightarrow{}1.0.0.0/8 has AS-PATH length of 1, while E9\textrightarrow{}AS2\textrightarrow{}1.0.0.0/8 has length of 2. The new protocol would then deem both routers valid egress point of 1.0.0.0/8, although E5 has a 2-times higher probability of being tagged as the destination.
 
+The calculation of probabilities can be synthesised through the propagation of iBGP within the network. Once all routers reach a consensus on the routing table probability distribution, we can start routing the packets. For instance, consider a packet destined to 1.0.0.0/8 originates at C1, C1 uses a random generator with weight to decide this specific packet shall go to \textbf{E9} instead of \textcolor{mygray}{E5}. The packet would then follow AS's IGP routing to E9 and gets forwarded to AS2. The total amount of packets egressing through E5 and E9 (2:1) shall be roughly inversely proportional to the AS-PATH ratio (1:2).
 
+Compared to the traditional BGP, this approach brings a more balanced traffic load to internal AS and neighbouring AS. Consider a spike in traffic heading towards 1.0.0.0/8: With the conventional BGP, all traffic would have to be congested at E9/E5, and that single router determines the 1.0.0.0/8 traffic output capacity of the whole AS. Now that the same IP prefix can have multiple egress points, a proportion of the congested traffic can be diverted to other edge routers, balancing the load.
+
+However, this approach introduces unwanted overhead in tagging and untagging packets upon entering and exiting the AS routing system. This could potentially slow down packet forwarding in switches. In order to facilitate this tagging approach within the AS, the owners might need to purchase advanced network equipment that supports this type of custom-configured routing protocols, incurring extra changes.
+
+In all, this approach takes the idea from multi-path BGP and Ethernet VLAN tagging to achieve both paths simultaneously. The benefit of balanced load under bursty traffic comes with the trade-off of the extra randomisation and tagging overhead, as well as the requirement of more customisable routers.
 
 \end{document}
