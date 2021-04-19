@@ -237,7 +237,7 @@ The calculation of probabilities can be synthesised through the propagation of i
 
 Compared to the traditional BGP, this approach brings a more balanced traffic load to internal AS and neighbouring AS. Consider a spike in traffic heading towards 1.0.0.0/8: With the conventional BGP, all traffic would have to be congested at E9/E5, and that single router determines the 1.0.0.0/8 traffic output capacity of the whole AS. Now that the same IP prefix can have multiple egress points, a proportion of the congested traffic can be diverted to other edge routers, balancing the load.
 
-However, this approach introduces unwanted overhead in tagging and untagging packets upon entering and exiting the AS routing system. This could potentially slow down packet forwarding in switches. In order to facilitate this tagging approach within the AS, the owners might need to purchase advanced network equipment that supports this type of custom-configured routing protocols, incurring extra changes.
+However, this approach introduces unwanted overhead in tagging and untagging packets upon entering and exiting the AS routing system. This could potentially slow down packet forwarding in switches. In order to facilitate this tagging approach within the AS, the owners might need to purchase advanced network equipment that supports this type of custom-configured routing protocols, incurring extra charges.
 
 In all, this approach takes the idea from multi-path BGP and Ethernet VLAN tagging to achieve both paths simultaneously. The benefit of balanced load under bursty traffic comes with the trade-off of the extra randomisation and tagging overhead, as well as the requirement of more customisable routers.
 
