@@ -7,12 +7,25 @@
 \usepackage{enumerate}
 \usepackage{fancyhdr}
 \usepackage{mathrsfs}
-\usepackage{xcolor}
 \usepackage{graphicx}
 \usepackage{subcaption}
 \usepackage{listings}
 \usepackage{hyperref}
 \usepackage{titlesec}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{palatino}
+\usepackage{booktabs}
+\usepackage[dvipsnames]{xcolor}
+
+\definecolor{mygray}{gray}{0.6}
+
+\newcommand\twoitems[2]{%
+\item#1%
+\hspace{20pt}%
+\labelitemi
+\hspace{\labelsep}#2
+}
 
 \setcounter{secnumdepth}{4}
 \titleformat{\paragraph}
@@ -43,13 +56,12 @@
 \newcommand\code{\url}
 \newcommand\course{COMP0023}
 \newcommand\hwnumber{}                   
-\newcommand\NetIDa{17134402}            \newcommand\NetIDb{-}            
 \pagestyle{fancyplain}
 \headheight 35pt
 \lhead{\NetIDa}
-\lhead{\NetIDa\\\NetIDb}                 
+\lhead{\course}                 
 \chead{\textbf{\Large Assessment \hwnumber}}
-\rhead{\course \\ \today}
+\rhead{\today}
 \lfoot{}
 \cfoot{}
 \rfoot{\small\thepage}
@@ -133,7 +145,7 @@ This rare case would result in either an invalid DNS query or a DNS query target
 
 \subsubsection{HTTP transactions}
 
-\url{www.ucl.ac.uk} shall be HTTP webpages (not Gopher). Although UCL serves only HTTP/1.1, \url{www.ucl.ac.uk/} also includes content served by CDN through HTTP/3, optionally. It's notable that HTTP/3 is based on QUIC/UDP/IP stack, while HTTP/1.1 on a TCP/IP stack. Moreover, when serving HTTPS/1.1, there's a TLS layer in between HTTP and TCP. We limit the scope to HTTP/TCP/IP stack in this question.
+\url{www.ucl.ac.uk} shall be HTTP webpages (certainly not Gopher). Although UCL serves only HTTP/1.1, \url{www.ucl.ac.uk/} also includes content served by CDN through HTTP/3, optionally. It's notable that HTTP/3 is based on QUIC/UDP/IP stack, while HTTP/1.1 on a TCP/IP stack. Moreover, when serving HTTPS/1.1, there's a TLS layer in between HTTP and TCP. We limit the scope to HTTP/TCP/IP stack in this question.
 
 \paragraph{Packet Error Detected}
 
@@ -169,28 +181,41 @@ In the rare case where the packet error is not detected, the serving application
   \label{fig:topology}
 \end{figure}
 
+\newpage
 \subsection{}
 
+We constraint the discussion scope to BGP and IGPs mentioned in COMP0023 lectures.
 
-C2 -> C1 -> E7
-C1 -> C2 -> E4 5.0.0.0/8
+Consider two paths destined to 1.0.0.0/8:
+\begin{itemize}
+    \twoitems{E9 \textrightarrow{} C1 \textrightarrow{} C2 \textrightarrow{} E5}{E5 \textrightarrow{} C2 \textrightarrow{} C1 \textrightarrow{} E9}
+\end{itemize}
 
+We will prove below that these two paths are mutually incompatible.
 
+\subsubsection{Assume E9 \textrightarrow{} C1 \textrightarrow{} C2 \textrightarrow{} E5 (1.0.0.0/8) is configured}
 
+Referring to BGP routing priority, we look at all possibilities for this route to exist:
+\begin{itemize}
+    \item LOCAL PREF (LP): E9 and E5 are BGP routers connecting to a neighbouring provider AS1 and AS2. They shall have the same LP.
+    \item \textbf{AS-PATH: If AS-PATH to 1.0.0.0/8 is longer for AS2 than AS1, E9 would be forced to route to egress E5 to AS1.}
+    \item \textcolor{mygray}{ORIGIN, MED: IGP is used for ORIGIN, and MED is invalid as E5 connects to AS1 and E9 connects to AS2}
+    \item eBGP \textgreater{} iBGP: E9 and E5 are both routers with egress connection to 1.0.0.0/8.
+    \item IGP distance: E9 and E5 shall both have 0 distance connecting to 1.0.0.0/8 within the AS.
+    \item \textbf{Router ID: E5 have a smaller router ID than E9.}
+\end{itemize}
 
+If the AS-PATH/Router ID assumption is valid, E5 \textrightarrow{} C2 \textrightarrow{} C1 \textrightarrow{} E9 (1.0.0.0/8) would be invalid. Instead, E5 \textrightarrow{} AS2 shall be the egress point of 1.0.0.0/8 within AS Y.
 
-AS-PATH length
+\subsubsection{Assume E5 \textrightarrow{} C2 \textrightarrow{} C1 \textrightarrow{} E9 (1.0.0.0/8) is configured}
 
-if E9->C1->C2->E5, that implies AS1 has better AS-PATH length
+Vice versa, the only underlying reasoning now would be: AS-PATH to $1.0.0.0/8$ is longer for AS1 than AS2 (Router-ID assumption is invalid in this case). Thus, E9 shall be the only egress point of 1.0.0.0/8 within AS Y. E9 \textrightarrow{} C1 \textrightarrow{} C2 \textrightarrow{} E5 (1.0.0.0/8) would not happen.
 
-then not possible to do E5->C2->C1->E9
+\subsection{}
 
-vice versa, if E5->C2->C1->C9, AS1 must have 
+AVOID LOOPING
 
-i.e. 1.0.0.0/8
-
-
-
+TAG IT, ROUND ROBIN ON UNTAGGED NEW PACKET, FORWARD TAGGED PACKET AS EXPECTED (DUE TO FULL MESH ROUTING COMMUNICATION), REMOVE TAG ON EXIT AS,
 
 
 
