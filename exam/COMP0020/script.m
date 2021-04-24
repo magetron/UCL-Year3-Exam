@@ -123,3 +123,42 @@ f9 n = g
 
 
 
+|| Question 2
+
+
+|| Definitions
+
+block == (num, bool, [num])
+
+heap == [block]
+
+
+|| Allocator
+
+lastN :: num -> [*] -> [*]
+lastN n xs = drop (#xs - n) xs
+
+malloc :: num -> heap -> heap
+malloc 0 h = h
+malloc x [(s, True, d)] = error "no heap space left"
+malloc x [(s, False, d)] = [(x, True, [0 | c <- [0..x - 1]]), (s - x, False, lastN (s - x) d)], if s > x
+                         = [(x, True, [0 | c <- [0..x - 1]])], if s = x
+                         = error "no heap space left", otherwise
+malloc x ((s, True, d):heapleft) = [(s, True, d)] ++ malloc x heapleft
+malloc x ((s, False, d):heapleft) = [(x, True, [0 | c <- [0..x - 1]]), (s - x, False, lastN (s - x) d)] ++ heapleft, if s > x
+                                  = [(x, True, [0 | c <- [0..x - 1]])] ++ heapleft, if s = x
+                                  = [(s, False, d)] ++ malloc x heapleft, otherwise
+
+
+|| Test
+emptyheap :: heap
+emptyheap = [(16, False, [0 | c <- [0..16 - 1]])]
+
+test_naive_malloc :: heap
+test_naive_malloc = malloc 2 emptyheap
+
+test_second_malloc :: heap
+test_second_malloc = malloc 5 test_naive_malloc
+
+usedheap :: heap
+usedheap = [(3, False, [0 | c <- [0..3 - 1]]), (4, True, [1, 2, 3, 4]), (6, False, [0 | c <- [0..6 - 1]]), (3, True, [7, 8, 9])]
