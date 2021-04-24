@@ -47,14 +47,14 @@ f9 n = g
 ||                                  f9 n = g
 ||
 || n is the church numeral we are looking to reduce by 1 (or not if n = zero)
-|| , and `f9 n = g` means that: g is n's predecessor.
+|| , and "f9 n = g" means that: g is n's predecessor.
 ||
 || To elaborate on g:
 ||                                g f x = n p q r
-|| g f x is applying the chruch numeral to a concrete f and x. We expect g f x
-|| to be the analagous to "pred(n) f x", but we have to do it in a lambda
-|| calculus way. Hence we let g f x = n p q r, applying n to three arguments in
-|| an attmept to reduce n.
+|| g f x is applying the church numeral to a concrete f and x. We expect g f x
+|| to be analogous to "pred(n) f x", but we have to do it in a lambda calculus
+|| way. Hence we let g f x = n p q r, applying n to three arguments in an
+|| attmept to reduce n.
 ||
 || The first argument, p g h = h (g f) can be written as
 ||                               λg.(λh.h (g f))
@@ -83,38 +83,43 @@ f9 n = g
 || Let n = zero, as specified above, zero in church numeral is λf.(λx.x)
 || n (λg.(λh.h (g f))) (λu.x) (λu.u) ->
 || λf.(λx.x) (λg.(λh.h (g f))) (λu.x) (λu.u) ->
-|| β-reducing (λg.(λh...)), replacing 0 times,
+||     β-reducing (λg.(λh...)), replacing 0 times,
 || λf.(λx.x) (λu.x) (λu.u) ->
 || λf.(λu.x) (λu.u) ->
 || λf.(λx.x)
-|| And that is identical to zero in church numeral
-|| We proved f9 zero = zero
+||     And that is identical to zero in church numeral
+||     We proved f9 zero = zero
 ||
 || Normal Cases
 ||
 || Without the loss of generality, let n = two
 || two (λg.(λh.h (g f))) (λu.x) (λu.u) ->
 || (λg.(λh.h (g f)))(one (λg.(λh.h (g f)))(λu.x))(λu.u) ->
-|| Using p, q, r as abbreviations below,
+||     Using p, q, r as abbreviations below,
 || p (one p q) r ->
 || p (p (zero p q)) r ->
-|| As shown above in "special case", we remove one application of f at this step
-|| p (p (λf.(λu.x))) r ->
+||     As shown above in "special case", we remove one application of f at
+||     this step
 || p (p (λu.x)) r ->
-|| Substituting p with its λ expression, and using β-reduction to replace g,
+||     Substituting p with its λ expression, and using β-reduction to replace g
 || p (λh.h ((λu.x) f)) r ->
 || p (λh.h x) r ->
-|| Similarly,
+||     Similarly,
 || λh.h ((λh.h x) f) r ->
 || λh.h (f x) r ->
-|| Substituting r,
+||     Substituting r,
 || λh.h (f x) (λu.u) ->
 || (λu.u) (f x) ->
 || f x
-|| And that is one in church numeral
-|| We showed f9 two = one
+||     And that is one in church numeral
+||     We showed f9 two = one
+|| The normal cases apply recursively upwards to all church numeral values.
 ||
-|| In conclusion, the chruch predecessor function reduces the f application
-|| times of 1 (n != 0), by expanding the church numeral to p(p...(zero p q)) r.
-|| Since "zero p q" would be the constant x, reassembling it back would produce
-|| church numeral -1.
+|| In conclusion, the church predecessor function reduces the f application by
+|| 1 time (when n != 0), by expanding the church numeral n to
+|| "p(p...(zero p q)) r" (with p stacking up for n times). Since "zero p q"
+|| would be the constant x, reassembling it back would produce church numeral
+|| n's predecessor.
+
+
+
