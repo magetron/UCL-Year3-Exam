@@ -13,14 +13,17 @@ two f x = f (f x)
 three :: (* -> *) -> * -> *
 three f x  = f (f (f x))
 
-|| 1.a
-plus :: ((* -> *) -> * -> *) -> ((* -> *) -> * -> *) -> (* -> *) -> * -> *
+|| 1.a Church Addition
+
+plus :: (*** -> ** -> *) -> (*** -> **** -> **) -> *** -> **** -> *
 plus a b f x = a f (b f x)
 
 
-|| 1.b
-times :: ((* -> *) -> * -> *) -> ((* -> *) -> * -> *) -> ((* -> *) -> * -> *)
-times a b = a . b
+|| 1.b Church Multiplication
+|| Alternative definition: times a b = a . b
+
+times :: (** -> *) -> (*** -> **) -> *** -> *
+times a b f = a (b f)
 
 
 || 1.c
