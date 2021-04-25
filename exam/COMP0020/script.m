@@ -139,31 +139,103 @@ f9 n = g
 
 || Definitions
 
-||       size flag  nextfree,  memory
-block == (num, bool, [num])
+|| Note: these definitions are of high level abstraction of computer memory
 
+|| A block is comprised of:
+|| block header:
+||    * num, the block size
+||    * bool, the used/unused flag (for implcit free list)
+||    * bool, the mark bit used for garbage collection
+|| block memory:
+||    * [num], list of pointers to other blocks
+block == (num, bool, bool, [num])
+
+|| A heap is comprised of:
+||    * [block], many blocks
 heap == [block]
 
-|| Allocator
+|| Utility Functions
 
 lastN :: num -> [*] -> [*]
 lastN n xs = drop (#xs - n) xs
 
+lookup :: num -> [*] -> *
+lookup n [] = error "index out of bounds"
+lookup 0 (x:xs) = x
+lookup n (x:xs) = lookup (n - 1) xs
+
+|| Allocator
+
+|| memory allocation process
+||    * gc h, garbage collect the heap
+||    * alloc x h, allocate new memory on the heap
 malloc :: num -> heap -> heap
-malloc 0 h = h
-malloc x [(s, True, d)] = error "no heap space left"
-malloc x [(s, False, d)] = [(x, True, [0 | c <- [0..x - 1]]), (s - x, False, lastN (s - x) d)], if s > x
-                         = [(x, True, [0 | c <- [0..x - 1]])], if s = x
-                         = error "no heap space left", otherwise
-malloc x ((s, True, d):heapleft) = [(s, True, d)] ++ malloc x heapleft
-malloc x ((s, False, d):heapleft) = [(x, True, [0 | c <- [0..x - 1]]), (s - x, False, lastN (s - x) d)] ++ heapleft, if s > x
-                                  = [(x, True, [0 | c <- [0..x - 1]])] ++ heapleft, if s = x
-                                  = [(s, False, d)] ++ malloc x heapleft, otherwise
+malloc x h = alloc x (gc h)
+
+|| garbage collector
+||    * mark h h, first mark all used memory, two copies of h, one for
+||        traversing the heap, one for preserving the marked heap
+||    * scan h, then scan to garbage collect unused ones
+gc :: heap -> heap
+gc h = scangc (mark h h)
+
+|| garbage collector -- marking stage
+
+|| mark/unmark a single block
+markBlock :: block -> block
+markBlock (s, f, mb, d) = (s, f, True, d)
+
+unmarkBlock :: block -> block
+unmarkBlock (s, f, mb, d) = (s, f, False, d)
+
+|| mark/unmark the nth block according to the pointer
+markNthBlock :: num -> heap -> heap
+markNthBlock n h = (take n h) ++ [markBlock (lookup n h)] ++ (drop (n + 1) h)
+
+unmarkNthBlock :: num -> heap -> heap
+unmarkNthBlock n h = (take n h) ++ [unmarkBlock (lookup n h)] ++ (drop (n + 1) h)
+
+|| mark/unmark a list of blocks in heap according the pointer list
+markBlockList :: [num] -> heap -> heap
+markBlockList [] h = h
+markBlockList (n:ns) h = markBlockList ns (markNthBlock n h)
+
+unmarkBlockList :: [num] -> heap -> heap
+unmarkBlockList [] h = h
+unmarkBlockList (n:ns) h = unmarkBlockList ns (unmarkNthBlock n h)
+
+|| mark all used blocks in a heap, we use two heaps here as:
+||    * heap1 : traversing the blocks looking at each block's pointers if they
+||              are in use
+||    * heap2 : the marked heap
+mark :: heap -> heap -> heap
+mark [] h = h
+mark ((s, f, b, d):heapleft) h = mark heapleft (markBlockList d h), if f = True
+                               = mark heapleft h, otherwise
+
+|| TO BE IMPLEMENTED
+|| garbage collector -- scanning stage
+scangc :: heap -> heap
+scangc h = h
+
+
+|| allocate memory
+alloc :: num -> heap -> heap
+alloc 0 h = h
+alloc x [(s, True, mb, d)] = error "no heap space left"
+alloc x [(s, False, mb, d)] = [(x, True, mb, [0 | c <- [0..x - 1]]), (s - x, False, mb, lastN (s - x) d)], if s > x
+                            = [(x, True, mb, [0 | c <- [0..x - 1]])], if s = x
+                            = error "no heap space left", otherwise
+alloc x ((s, True, mb, d):heapleft) = [(s, True, mb, d)] ++ malloc x heapleft
+alloc x ((s, False, mb, d):heapleft) = [(x, True, mb, [0 | c <- [0..x - 1]]), (s - x, False, mb,  lastN (s - x) d)] ++ heapleft, if s > x
+                                     = [(x, True, mb, [0 | c <- [0..x - 1]])] ++ heapleft, if s = x
+                                     = [(s, False, mb, d)] ++ malloc x heapleft, otherwise
+
 
 
 || Test
 emptyheap :: heap
-emptyheap = [(16, False, [0 | c <- [0..16 - 1]])]
+emptyheap = [(16, False, False, [0 | c <- [0..16 - 1]])]
 
 test_naive_malloc :: heap
 test_naive_malloc = malloc 2 emptyheap
@@ -172,4 +244,4 @@ test_second_malloc :: heap
 test_second_malloc = malloc 5 test_naive_malloc
 
 usedheap :: heap
-usedheap = [(3, False, [0 | c <- [0..3 - 1]]), (4, True, [1, 2, 3, 4]), (6, False, [0 | c <- [0..6 - 1]]), (3, True, [7, 8, 9])]
+usedheap = [(3, False, False, [0 | c <- [0..3 - 1]]), (4, True, False, [1, 3, 1, 3]), (6, False, False, [0 | c <- [0..6 - 1]]), (3, True, False, [1, 3, 3])]
