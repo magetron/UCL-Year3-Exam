@@ -1,3 +1,11 @@
+|| Environment:
+|| 2.066 last revised 31 January 2020
+|| compiled: Sat Apr 24 03:23:08 PM UTC 2021
+|| gcc82 -w
+|| host: x86_64 Linux 5.8.15-301.fc33.x86_64
+|| gcc82 (GCC) 8.2.0
+|| XVERSION 83
+
 || Question 1
 
 f :: num -> num
@@ -76,8 +84,8 @@ f9 n = g
 || We can further explain how predecessor works via examples:
 ||
 || Rewriting n p q r into λ expression:
-||                      n (λg.(λh.h (g f))) (λu.x) (λu.u)
-||                               p             q      r
+||                  λf.λx. n (λg.(λh.h (g f))) (λu.x) (λu.u)
+||                                  p             q      r
 ||
 || Special Case
 || Let n = zero, as specified above, zero in church numeral is λf.λx.x
@@ -129,13 +137,12 @@ f9 n = g
 
 || Question 2
 
-
 || Definitions
 
+||       size flag  nextfree,  memory
 block == (num, bool, [num])
 
 heap == [block]
-
 
 || Allocator
 
