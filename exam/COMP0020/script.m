@@ -210,14 +210,23 @@ unmarkBlockList (n:ns) h = unmarkBlockList ns (unmarkNthBlock n h)
 ||    * heap2 : the marked heap
 mark :: heap -> heap -> heap
 mark [] h = h
-mark ((s, f, b, d):heapleft) h = mark heapleft (markBlockList d h), if f = True
-                               = mark heapleft h, otherwise
+mark ((s, f, mb, d):heapleft) h = mark heapleft (markBlockList d h), if f = True
+                                = mark heapleft h, otherwise
 
-|| TO BE IMPLEMENTED
 || garbage collector -- scanning stage
-scangc :: heap -> heap
-scangc h = h
 
+free :: heap -> heap
+free [] = []
+free ((s, f, mb, d):heapleft) = (s, False, mb, d):(free heapleft), if mb = False
+                              = (s, f, mb, d):(free heapleft), otherwise
+
+
+|| TODO
+coalesce :: heap -> heap
+coalesce h = h
+
+scangc :: heap -> heap
+scangc h = coalesce (free h)
 
 || allocate memory
 alloc :: num -> heap -> heap
@@ -245,3 +254,6 @@ test_second_malloc = malloc 5 test_naive_malloc
 
 usedheap :: heap
 usedheap = [(3, False, False, [0 | c <- [0..3 - 1]]), (4, True, False, [1, 3, 1, 3]), (6, False, False, [0 | c <- [0..6 - 1]]), (3, True, False, [1, 3, 3])]
+
+garbageheap :: heap
+garbageheap = [(3, True, False, [1, 1, 1]), (10, True, False, [1 | c <- [0..10 - 1]]), (3, True, False, [1, 1, 1])]
