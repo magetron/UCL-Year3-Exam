@@ -80,37 +80,41 @@ f9 n = g
 ||                               p             q      r
 ||
 || Special Case
-|| Let n = zero, as specified above, zero in church numeral is λf.(λx.x)
-|| n (λg.(λh.h (g f))) (λu.x) (λu.u) ->
-|| λf.(λx.x) (λg.(λh.h (g f))) (λu.x) (λu.u) ->
+|| Let n = zero, as specified above, zero in church numeral is λf.λx.x
+|| λf.λx. n (λg.(λh.h (g f))) (λu.x) (λu.u) ->
+|| λf.λx. λf.λx.x (λg.(λh.h (g f))) (λu.x) (λu.u) ->
 ||     β-reducing (λg.(λh...)), replacing 0 times,
-|| λf.(λx.x) (λu.x) (λu.u) ->
-|| λf.(λu.x) (λu.u) ->
-|| λf.(λx.x)
+|| λf.λx. λx.x (λu.x) (λu.u) ->
+|| λf.λx. (λu.x) (λu.u) ->
+|| λf.λx. x
 ||     And that is identical to zero in church numeral
 ||     We proved f9 zero = zero
 ||
 || Normal Cases
 ||
 || Without the loss of generality, let n = two
-|| two (λg.(λh.h (g f))) (λu.x) (λu.u) ->
-|| (λg.(λh.h (g f)))(one (λg.(λh.h (g f)))(λu.x))(λu.u) ->
+|| λf.λx. two (λg.(λh.h (g f))) (λu.x) (λu.u) ->
+|| λf.λx. λg.(λh.h (g f))) (one (λg.(λh.h (g f)))(λu.x)) (λu.u) ->
 ||     Using p, q, r as abbreviations below,
-|| p (one p q) r ->
-|| p (p (zero p q)) r ->
+|| λf.λx. p (one p q) r ->
+|| λf.λx. p (p (zero p q)) r ->
+|| λf.λx. p (p (λf.λx.x (λg.(λh.h (g f))) (λu.x))) r ->
+|| λf.λx. p (p (λx.x (λu.x))) r ->
 ||     As shown above in "special case", we remove one application of f at
 ||     this step
-|| p (p (λu.x)) r ->
+|| λf.λx. p (p (λu.x)) r ->
 ||     Substituting p with its λ expression, and using β-reduction to replace g
-|| p (λh.h ((λu.x) f)) r ->
-|| p (λh.h x) r ->
+|| λf.λx. p ((λg.(λh.h (g f))) (λu.x)) r ->
+|| λf.λx. p (λh.h ((λu.x) f)) r ->
+|| λf.λx. p (λh.h x) r ->
 ||     Similarly,
-|| λh.h ((λh.h x) f) r ->
-|| λh.h (f x) r ->
+|| λf.λx. ((λg.(λh.h (g f))) (λh.h x) r ->
+|| λf.λx. λh.h ((λh.h x) f) r ->
+|| λf.λx. λh.h (f x) r ->
 ||     Substituting r,
-|| λh.h (f x) (λu.u) ->
-|| (λu.u) (f x) ->
-|| f x
+|| λf.λx. λh.h (f x) (λu.u) ->
+|| λf.λx. (λu.u) (f x) ->
+|| λf.λx. f x
 ||     And that is one in church numeral
 ||     We showed f9 two = one
 || The normal cases apply recursively upwards to all church numeral values.
@@ -118,8 +122,8 @@ f9 n = g
 || In conclusion, the church predecessor function reduces the f application by
 || 1 time (when n != 0), by expanding the church numeral n to
 || "p(p...(zero p q)) r" (with p stacking up for n times). Since "zero p q"
-|| would be the constant x, reassembling it back would produce church numeral
-|| n's predecessor.
+|| removes a layer of f's application, reassembling it back would produce
+|| church numeral n's predecessor.
 
 
 
