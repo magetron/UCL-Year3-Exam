@@ -20,6 +20,9 @@
 \usepackage{enumitem}
 
 \definecolor{grey}{gray}{0.6}
+\lstset{
+    escapeinside={(*@}{@*)},
+}
 
 \newcommand{\SubItem}[1]{
     {\setlength\itemindent{15pt} \item[-] #1}
@@ -44,10 +47,10 @@
   linkbordercolor={0 0 1}
 }
 
-\lstdefinestyle{C}{
+\lstdefinestyle{C++}{
     language        = C,
     frame           = lines, 
-    basicstyle      = \footnotesize,
+    basicstyle      = \footnotesize\ttfamily,
     keywordstyle    = \color{blue},
     stringstyle     = \color{olive},
     commentstyle    = \color{red}\ttfamily,
@@ -338,12 +341,59 @@ In all, as we have shown, \texttt{malloc()} is \textbf{not async-signal-safe}, w
 
 \subsubsection{}
 
+The string \texttt{"Hello"} is printed twice due to the output is line-buffered in C's Standard I/O.
+
+When the first \texttt{printf("Hello")} is called, the string \texttt{"Hello"} is put into the buffer for \texttt{stdout}. Since the \texttt{stdout} is line-buffered by default, we would not see the string on the screen yet.
+
+Then the \texttt{fork()} happens. As mentioned previously, \texttt{fork()} copies the entire virtual address space to the child in a copy-on-write fashion, including the \texttt{stdout} buffer. Now, we have two copies of the \texttt{stdout} buffer, both with the string \texttt{"Hello"}.
+
+The child process than calls \texttt{printf("Child goodbye\textbackslash n")} with a newline. Since there is a newline, the whole string in the child's buffer \texttt{"HelloChild goodbye"} would be presented on the console. The same happens for the parent process as well (\texttt{"HelloParent goodbye"}). Therefore, there are two \texttt{"Hello"}s in total.
 
 \subsubsection{}
+
+Here we offer two ways to force the output \texttt{"Hello"} to be generated once.
+
+First, we can simply turn off the buffer on the \texttt{stdout} stream as shown in the code listing \ref{lst:4bii-nobufstdio} above. Thus everything printed using Standard I/O to \texttt{stdout} will be turned into a \texttt{write()} system call immediately. 
+
+\begin{lstlisting}[style=C++, label={lst:4bii-nobufstdio}, caption={Turn off buffer for \texttt{stdout}},captionpos=b]
+#include <stdio.h>
+#include <unistd.h>
+
+int main () {
+  (*@\textbf{setvbuf(stdout, NULL, \_IONBF, 0);}@*)
+  printf("Hello");
+  if (fork() == 0) {
+    printf("Child goodbye\n");
+  } else {
+    printf("Parent goodbye\n");
+  }
+  return 0;
+}
+\end{lstlisting}
+
+The other way would be to flush the \texttt{stdout} buffer before \texttt{fork()}, as shown in listing \ref{lst:4bii-flush}.
+
+\begin{lstlisting}[style=C++, label={lst:4bii-flush}, caption={Flush the \texttt{stdout} buffer before \texttt{fork}},captionpos=b]
+#include <stdio.h>
+#include <unistd.h>
+
+int main () {
+  printf("Hello");
+  (*@\textbf{fflush(stdout);}@*)
+  if (fork() == 0) {
+    printf("Child goodbye\n");
+  } else {
+    printf("Parent goodbye\n");
+  }
+  return 0;
+}
+\end{lstlisting}
 
 
 \newpage
 \section{}
+
+
 
 
 \end{document}
