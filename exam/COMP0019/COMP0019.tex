@@ -305,6 +305,43 @@ In conclusion, we showed that the encoder should have increased the \texttt{curr
 \newpage
 \section{}
 
+\subsection{}
+
+\subsubsection{}
+
+As described above, we consider \texttt{malloc()/free()} a function that does the following:
+\begin{itemize}[topsep=0pt]\itemsep-0.6em 
+    \item \texttt{spinlock.lock();}
+    \item \texttt{// operates on the heap}
+    \item \texttt{spinlock.unlock();}
+\end{itemize}
+
+Consider the parent process's two threads, $T_1$ is in the middle of a \texttt{malloc()}, while $T_2$ is \texttt{fork()}-ing a child process. Note that the lock is now in the hands of $T_1$'s \texttt{malloc()}. 
+
+As described above, calling \texttt{fork()} on a multi-threaded program would \textbf{only fork the single thread that actually called it}. However, \textbf{the entire virtual address space of the parent process is replicated in the child}, including the states of spinlocks. In other words, only $T_{2forked}$ exists, while $T_{1forked}$ is not there anymore to unlock its locked $\mathtt{spinlock}_{forked}$. Thus, when $T_{2forked}$ invokes \texttt{malloc()} later on in the logic flow, the locked $\mathtt{spinlock}_{forked}$ (but never can be unlocked) would result in a deadlock and hangs the child process.
+
+\subsubsection{}
+
+No, she is not correct.
+
+Being async-signal-safe a function means that the function is either reentrant, or uninterruptible by signals (uninterruptible system calls). If a function is reentrant, it can be interrupted in the middle of an execution and safely called again, before completing its previous invocation. \texttt{malloc()} would clearly would not be able to achieve this as it operates on a globally shared data structure.
+
+Consider a single-threaded process where \texttt{malloc()} is invoked normally, and in its signal handlers. Signals can arrive at anytime of execution, hence asynchronous. In the case where a signal arrives during the \texttt{malloc()} process in the logic flow, the signal handler would be invoked. 
+
+If it is a thread-safe \texttt{malloc()}, the logic flow \texttt{malloc()} would be holding the heap lock, waiting for the signal handler to finish. The signal hanlder, on the other hand, is waiting for its \texttt{malloc()} to acquire the heap lock. This results in a unfortunate deadlock situation.
+
+Now we consider removing the locks of the \texttt{malloc()} (or if we use a reentrant lock in C++). Then, the signal handler's \texttt{malloc()} (in the same thread as the logic flow) would encounter a half-modified heap state, and could potentially corrupt the heap structure by allocating new blocks on top of it.
+
+In all, as we have shown, \texttt{malloc()} is \textbf{not async-signal-safe}, with or without the process-wide spinlock on the heap.
+
+\subsection{}
+
+\subsubsection{}
+
+
+\subsubsection{}
+
+
 \newpage
 \section{}
 
