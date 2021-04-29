@@ -247,7 +247,7 @@ free ((s, f, mb, d):heapleft) = (s, False, False, d):(free heapleft), if mb = Fa
 coalesce :: heap -> heap
 coalesce [] = []
 coalesce [b] = [b]
-coalesce ((s1, f1, mb1, d1):(s2, f2, mb2, d2):heapleft) = (s1 + s2, False, False, d1 ++ d2):(coalesce heapleft), if f1 = False & f2 = False
+coalesce ((s1, f1, mb1, d1):(s2, f2, mb2, d2):heapleft) = coalesce ([(s1 + s2, False, False, d1 ++ d2)] ++ heapleft), if f1 = False & f2 = False
                                                         = [(s1, f1, mb1, d1), (s2, f2, mb2, d2)] ++ coalesce heapleft, otherwise
 
 || scan all blocks in the heap, free unused ones and coalesce them
@@ -279,9 +279,12 @@ testall = emptyheapAlloc6Test &
           usedheapAlloc2Test &
           usedheapAlloc5Test &
           usedheapAlloc6Test &
+          garbageheapAlloc0Test &
           garbageheapAlloc2Test &
           garbageheapAllocConsec23Test &
-          garbageheapAllocConsec231Test
+          garbageheapAllocConsec231Test &
+          coalesceheapGCTest &
+          coalesceheapAlloc1Test
 
 || This is an empty heap
 emptyheap :: heap
@@ -300,6 +303,13 @@ garbageheap = [(3, True, False,   [1, 1, 1]),
                (10, True, False,  [1 | c <- [0..10 - 1]]),
                (3, True, False,   [1, 1, 1])]
 
+|| This is a heap with garbage but involves consecutive coalescing during gc.
+|| block 1, 2, 3 will be gc-ed and coalesce into a 15 byte free block
+coalesceheap :: heap
+coalesceheap = [(6, True, False,  [3 | c <- [0..6 - 1]]),
+                (8, True, False,  [3 | c <- [0..8 - 1]]),
+                (1, True, False,  [3]),
+                (1, True, False,  [3])]
 
 || Test Case 1 - Empty Heap Allocation 6 bytes
 emptyheapAlloc6 :: heap
@@ -380,10 +390,25 @@ garbageheapAllocConsec23 = [(2, True, False,   [0, 0]),
 garbageheapAllocConsec23Test :: bool
 garbageheapAllocConsec23Test = (malloc 3 (malloc 2 garbageheap)) == garbageheapAllocConsec23
 
-|| Test Case 10 - Garbage Heap Consecutiv Allocation 1 bytes (following Test 9)
+|| Test Case 10 - Garbage Heap Consecutive Allocation 1 byte (following Test 9)
 garbageheapAllocConsec231 :: heap
 garbageheapAllocConsec231 = [(2, True, False,   [0,0]),
                              (1, True, False,   [0]),
                              (13, False, False, [0,0,0,1,1,1,1,1,1,1,1,1,1])]
 garbageheapAllocConsec231Test :: bool
 garbageheapAllocConsec231Test = (malloc 1 (malloc 3 (malloc 2 garbageheap))) == garbageheapAllocConsec231
+
+|| Test Case 11 - Consecutive Coalesce Heap Garbage Collection
+coalesceheapGC :: heap
+coalesceheapGC = [(15, False, False, [3 | c <- [0..15 - 1]]),
+                  (1, True, False,   [3])]
+coalesceheapGCTest :: bool
+coalesceheapGCTest = (malloc 0 coalesceheap) == coalesceheapGC
+
+|| Test Case 12 - Consecutive Coalesce Heap Allocation 1 byte
+coalesceheapAlloc1 :: heap
+coalesceheapAlloc1 = [(1, True, False,   [0]),
+                      (14, False, False, [3 | c <- [0..14 - 1]]),
+                      (1, True, False,   [3])]
+coalesceheapAlloc1Test :: bool
+coalesceheapAlloc1Test = (malloc 1 coalesceheap) == coalesceheapAlloc1
