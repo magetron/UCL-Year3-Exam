@@ -137,6 +137,27 @@ f9 n = g
 
 || Question 2
 
+|| Summary
+|| In this question, we programmed a malloc function with mark-scan garbage
+|| collection. The function also comes with all-round test cases.
+||
+|| For the allocator, the heap is traversed with a implicit free list, and the
+|| allocation is based on a first-fit policy. The estimated time complexity for
+|| the allocation alone is O(n) (n being the number of blocks in the heap).
+||
+|| For the garbage collector, the marking process is done by visiting every
+|| single pointer within each active block. The time complexity is O(m) (m being
+|| the number of active block bytes). The scanner includes both the free
+|| function and the coalesce function. "free" would traverse through the
+|| heap in O(n) time and free the unmarked blocks. "coalesce" then merges the
+|| free blocks together in O(n) time to reduce internal fragmentation. In total,
+|| the garbage collector operates on a linear O(m) time scale.
+||
+|| Testing is done via evaluating the "testall" variable. It includes several
+|| test suites simulating use cases of empty heaps, used heaps and heaps with
+|| garbage. We also test the consecutive allocation capability of the malloc
+|| function with "malloc 3 (malloc 2 heap)".
+
 || Definitions
 || Note: these definitions are of high level abstraction of the computer memory
 
