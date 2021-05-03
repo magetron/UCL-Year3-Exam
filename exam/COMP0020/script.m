@@ -161,29 +161,30 @@ f9 n = g
 || Definitions
 || Note: these definitions are of high level abstraction of the computer memory
 
+|| Each segment in user accessible malloc'd payload can be either:
+||    * a pointer to an address
+||    * a plain data number
+data ::= Pointer num | Data num
+
 || A block is comprised of:
 || block header:
+||    * num, the block address
 ||    * num, the block size
 ||    * bool, the used/unused flag (for implcit free list)
 ||    * bool, the mark bit used for garbage collection
-|| block memory:
-||    * [num], list of pointers to other blocks
-block == (num, bool, bool, [num])
+|| block malloc'd payload:
+||    * [data], list of data as specified above
+block == (num, num, bool, bool, [data])
 
 || A heap is comprised of:
 ||    * [block], many blocks
 || An empty heap is comprised of one single block:
-||    * [(size, False, False, [0,0..])]
+||    * [(addr, size, False, False, [Data 0, Data 0 ...])]
 heap == [block]
 
 || Utility Functions
 lastN :: num -> [*] -> [*]
 lastN n xs = drop (#xs - n) xs
-
-lookup :: num -> [*] -> *
-lookup n [] = error "index out of bounds"
-lookup 0 (x:xs) = x
-lookup n (x:xs) = lookup (n - 1) xs
 
 || Main Functions
 
@@ -194,7 +195,7 @@ malloc :: num -> heap -> heap
 malloc x h = alloc x (gc h)
 
 || garbage collector - mark scan gc
-||    * mark h h, first mark all used memory, two copies of h, one for
+||    * mark h h, first mark all used memory: two copies of h, one for
 ||        traversing the heap, one for preserving the marked heap
 ||    * scan h, then scan to garbage collect unused ones
 gc :: heap -> heap
@@ -204,51 +205,60 @@ gc h = scangc (mark h h)
 
 || mark/unmark a single block
 markBlock :: block -> block
-markBlock (s, f, mb, d) = (s, f, True, d)
+markBlock (a, s, f, mb, d) = (a, s, f, True, d)
 
 unmarkBlock :: block -> block
-unmarkBlock (s, f, mb, d) = (s, f, False, d)
+unmarkBlock (a, s, f, mb, d) = (a, s, f, False, d)
 
-|| mark/unmark the nth block according to the pointer
-markNthBlock :: num -> heap -> heap
-markNthBlock n h = (take n h) ++ [markBlock (lookup n h)] ++ (drop (n + 1) h)
+|| mark/unmark the address block according to the pointer given
+|| ignore if data is plain data
+markAddrBlock :: data -> heap -> heap
+markAddrBlock (Data x) h = h
+markAddrBlock (Pointer addr) [] = error "address not found"
+markAddrBlock (Pointer addr) ((a, s, f, mb, d):heapleft) = (markBlock (a, s, f, mb, d)):heapleft, if addr = a
+                                                         = (a, s, f, mb, d):(markAddrBlock (Pointer addr) heapleft), otherwise
 
-unmarkNthBlock :: num -> heap -> heap
-unmarkNthBlock n h = (take n h) ++ [unmarkBlock (lookup n h)] ++ (drop (n + 1) h)
+unmarkAddrBlock :: data -> heap -> heap
+unmarkAddrBlock (Data x) h = h
+unmarkAddrBlock (Pointer addr) [] = error "address not found"
+unmarkAddrBlock (Pointer addr) ((a, s, f, mb, d):heapleft) = (unmarkBlock (a, s, f, mb, d)):heapleft, if addr = a
+                                                           = (a, s, f, mb, d):(unmarkAddrBlock (Pointer addr) heapleft), otherwise
 
-|| mark/unmark a list of blocks in heap according the pointer list
-markBlockList :: [num] -> heap -> heap
+|| mark/unmark a list of blocks in heap according the data list (with pointers)
+markBlockList :: [data] -> heap -> heap
 markBlockList [] h = h
-markBlockList (n:ns) h = markBlockList ns (markNthBlock n h)
+markBlockList (a:as) h = markBlockList as (markAddrBlock a h)
 
-unmarkBlockList :: [num] -> heap -> heap
+unmarkBlockList :: [data] -> heap -> heap
 unmarkBlockList [] h = h
-unmarkBlockList (n:ns) h = unmarkBlockList ns (unmarkNthBlock n h)
+unmarkBlockList (a:as) h = unmarkBlockList as (unmarkAddrBlock a h)
 
 || mark all used blocks in a heap, we use two heaps here as:
 ||    * heap1 : traversing the blocks looking at each block's pointers if they
 ||              are in use
-||    * heap2 : the marked heap
+||    * heap2 : the marked output heap
 mark :: heap -> heap -> heap
 mark [] h = h
-mark ((s, f, mb, d):heapleft) h = mark heapleft (markBlockList d h), if f = True
-                                = mark heapleft h, otherwise
+mark ((a, s, f, mb, d):heapleft) h = mark heapleft (markBlockList d h), if f = True
+                                   = mark heapleft h, otherwise
 
 || garbage collector -- scanning stage
 
 || free the unmarked blocks, also unmark all the marked bits on the fly
 free :: heap -> heap
 free [] = []
-free ((s, f, mb, d):heapleft) = (s, False, False, d):(free heapleft), if mb = False
-                              = (s, f, False, d):(free heapleft), otherwise
+free ((a, s, f, mb, d):heapleft) = (a, s, False, False, d):(free heapleft), if mb = False
+                                 = (a, s, f, False, d):(free heapleft), otherwise
 
 || coalesce the free blocks to reduce internal fragmentation
-||    * if there are two free blocks, coalesce to make one free block
+||    * if there are two free blocks, coalesce to make one free block, and
+||      continue to do so recursively until all consecutive free blocks are
+||      merged into one.
 coalesce :: heap -> heap
 coalesce [] = []
 coalesce [b] = [b]
-coalesce ((s1, f1, mb1, d1):(s2, f2, mb2, d2):heapleft) = coalesce ([(s1 + s2, False, False, d1 ++ d2)] ++ heapleft), if f1 = False & f2 = False
-                                                        = [(s1, f1, mb1, d1), (s2, f2, mb2, d2)] ++ coalesce heapleft, otherwise
+coalesce ((a1, s1, f1, mb1, d1):(a2, s2, f2, mb2, d2):heapleft) = coalesce ([(a1, s1 + s2, False, False, d1 ++ d2)] ++ heapleft), if f1 = False & f2 = False
+                                                                = [(a1, s1, f1, mb1, d1)] ++ coalesce ([(a2, s2, f2, mb2, d2)] ++ heapleft), otherwise
 
 || scan all blocks in the heap, free unused ones and coalesce them
 scangc :: heap -> heap
@@ -256,22 +266,22 @@ scangc h = coalesce (free h)
 
 || allocator
 
-|| alloc function traverse the heap  using the implicit free list
-|| the allocation policy is first-fit
+|| alloc function traverse the heap using the implicit free list provided in
+|| blocks. The allocation policy is first-fit.
 alloc :: num -> heap -> heap
 alloc 0 h = h
-alloc x [(s, True, mb, d)] = error "no heap space left"
-alloc x [(s, False, mb, d)] = [(x, True, mb, [0 | c <- [0..x - 1]]), (s - x, False, mb, lastN (s - x) d)], if s > x
-                            = [(x, True, mb, [0 | c <- [0..x - 1]])], if s = x
-                            = error "no heap space left", otherwise
-alloc x ((s, True, mb, d):heapleft) = [(s, True, mb, d)] ++ alloc x heapleft
-alloc x ((s, False, mb, d):heapleft) = [(x, True, mb, [0 | c <- [0..x - 1]]), (s - x, False, mb,  lastN (s - x) d)] ++ heapleft, if s > x
-                                     = [(x, True, mb, [0 | c <- [0..x - 1]])] ++ heapleft, if s = x
-                                     = [(s, False, mb, d)] ++ alloc x heapleft, otherwise
+alloc x [(a, s, True, mb, d)] = error "no heap space left"
+alloc x [(a, s, False, mb, d)] = [(a, x, True, mb, [Data 0 | c <- [0..x - 1]]), (a + x, s - x, False, mb, lastN (s - x) d)], if s > x
+                               = [(a, x, True, mb, [Data 0 | c <- [0..x - 1]])], if s = x
+                               = error "no heap space left", otherwise
+alloc x ((a, s, True, mb, d):heapleft) = [(a, s, True, mb, d)] ++ alloc x heapleft
+alloc x ((a, s, False, mb, d):heapleft) = [(a, x, True, mb, [Data 0 | c <- [0..x - 1]]), (a + x, s - x, False, mb, lastN (s - x) d)] ++ heapleft, if s > x
+                                        = [(a, x, True, mb, [Data 0 | c <- [0..x - 1]])] ++ heapleft, if s = x
+                                        = [(a, s, False, mb, d)] ++ alloc x heapleft, otherwise
 
 || Tests
 
-|| This is the top-level test function. Evaluate this variable to run all tests.
+|| This is the top-level test runner. Evaluate this variable to run all tests.
 testall :: bool
 testall = emptyheapAlloc6Test &
           emptyheapAlloc16Test &
@@ -284,43 +294,64 @@ testall = emptyheapAlloc6Test &
           garbageheapAllocConsec23Test &
           garbageheapAllocConsec231Test &
           coalesceheapGCTest &
-          coalesceheapAlloc1Test
+          coalesceheapAlloc1Test  &
+          coalesceheapAllocConsec161Test &
+          coalescemiddleheapGCTest &
+          coalescemiddleheapAlloc4Test &
+          coalescemiddleheapAlloc2Test
 
 || This is an empty heap
 emptyheap :: heap
-emptyheap = [(16, False, False, [0 | c <- [0..16 - 1]])]
+emptyheap = [(0, 16, False, False, [Data 0 | c <- [0..16 - 1]])]
 
-|| This is a used heap, but no garbage blocks, as 1, 3 are referenced and used
+|| This is a used heap, but no garbage blocks, as block with addr 3 and 13
+|| are referenced and in-use
 usedheap :: heap
-usedheap = [(3, False, False, [0 | c <- [0..3 - 1]]),
-            (4, True, False,  [3, 3, 1, 3]),
-            (6, False, False, [0 | c <- [0..6 - 1]]),
-            (3, True, False,  [1, 3, 3])]
+usedheap = [(0, 3, False, False, [Data 0 | c <- [0..3 - 1]]),
+            (3, 4, True, False,  [Pointer 13, Pointer 13, Pointer 3, Pointer 13]),
+            (7, 6, False, False, [Data 0 | c <- [0..6 - 1]]),
+            (13, 3, True, False, [Pointer 13, Pointer 3, Pointer 3])]
 
-|| This is a garbage heap, only 1 is referenced and used, block 0, 2 are garbage
+|| This is a heap with garbage, only block with addr 3 is referenced and used.
+|| Block with addr 0, 13 are used but unreferenced (garbage to-be-collected).
 garbageheap :: heap
-garbageheap = [(3, True, False,   [1, 1, 1]),
-               (10, True, False,  [1 | c <- [0..10 - 1]]),
-               (3, True, False,   [1, 1, 1])]
+garbageheap = [(0, 3, True, False,   [Pointer 3, Pointer 3, Pointer 3]),
+               (3, 10, True, False,  [Pointer 3 | c <- [0..10 - 1]]),
+               (13, 3, True, False,  [Pointer 3, Data 0, Data 0])]
 
 || This is a heap with garbage but involves consecutive coalescing during gc.
-|| block 1, 2, 3 will be gc-ed and coalesce into a 15 byte free block
+|| block with addr 0, 6, 14 will be gc-ed and coalesce into a 15 byte long
+|| free block.
 coalesceheap :: heap
-coalesceheap = [(6, True, False,  [3 | c <- [0..6 - 1]]),
-                (8, True, False,  [3 | c <- [0..8 - 1]]),
-                (1, True, False,  [3]),
-                (1, True, False,  [3])]
+coalesceheap = [(0, 6, True, False,   [Pointer 15 | c <- [0..6 - 1]]),
+                (6, 8, True, False,   [Pointer 15 | c <- [0..8 - 1]]),
+                (14, 1, True, False,  [Pointer 15]),
+                (15, 1, True, False,  [Data 128])]
+
+|| This is a complex heap with garbage but involves coalescing in the middle
+|| of the blocks.
+|| Blocks with addr 8, 9, 10, 11 shall be gc-ed and coalesced into a 4 byte
+|| long free block.
+coalescemiddleheap :: heap
+coalescemiddleheap = [(0, 8, True, False,  [Pointer 0 | c <- [0..8 - 1]]),
+                      (8, 1, True, False,  [Pointer 0]),
+                      (9, 1, True, False,  [Data 200]),
+                      (10, 1, True, False, [Data 600]),
+                      (11, 1, True, False, [Data 800]),
+                      (12, 4, True, False, [Data 100, Data 200, Pointer 12, Data 100])]
+
 
 || Test Case 1 - Empty Heap Allocation 6 bytes
 emptyheapAlloc6 :: heap
-emptyheapAlloc6 = [(6, True, False, [0, 0, 0, 0, 0, 0]), (10, False, False, [0 | c <- [0..10 - 1]])]
+emptyheapAlloc6 = [(0, 6, True, False,   [Data 0, Data 0, Data 0, Data 0, Data 0, Data 0]),
+                   (6, 10, False, False, [Data 0 | c <- [0..10 - 1]])]
 
 emptyheapAlloc6Test :: bool
 emptyheapAlloc6Test = (malloc 6 emptyheap) == emptyheapAlloc6
 
 || Test Case 2 - Empty Heap Allocation 16 bytes - full
 emptyheapAlloc16 :: heap
-emptyheapAlloc16 = [(16, True, False, [0 | c <- [0..16 - 1]])]
+emptyheapAlloc16 = [(0, 16, True, False, [Data 0 | c <- [0..16 - 1]])]
 
 emptyheapAlloc16Test :: bool
 emptyheapAlloc16Test = (malloc 16 emptyheap) == emptyheapAlloc16
@@ -331,84 +362,119 @@ emptyheapAlloc0Test = (malloc 0 emptyheap) == emptyheap
 
 || Test Case 4 - Used Heap Allocation 2 bytes
 usedheapAlloc2 :: heap
-usedheapAlloc2 = [(2, True, False,  [0, 0]),
-                  (1, False, False, [0]),
-                  (4, True, False,  [3, 3, 1, 3]),
-                  (6, False, False, [0 | c <- [0..6 - 1]]),
-                  (3, True, False,  [1, 3, 3])]
+usedheapAlloc2 = [(0, 2, True, False,   [Data 0, Data 0]),
+                  (2, 1, False, False,  [Data 0]),
+                  (3, 4, True, False,   [Pointer 13, Pointer 13, Pointer 3, Pointer 13]),
+                  (7, 6, False, False,  [Data 0 | c <- [0..6 - 1]]),
+                  (13, 3, True, False,  [Pointer 13, Pointer 3, Pointer 3])]
 
 usedheapAlloc2Test :: bool
 usedheapAlloc2Test = (malloc 2 usedheap) == usedheapAlloc2
 
 || Test Case 5 - Used Heap Allocation 5 bytes
 usedheapAlloc5 :: heap
-usedheapAlloc5 = [(3, False, False, [0, 0, 0]),
-                  (4, True, False,  [3, 3, 1, 3]),
-                  (5, True, False,  [0, 0, 0, 0, 0]),
-                  (1, False, False, [0]),
-                  (3, True, False,  [1, 3, 3])]
+usedheapAlloc5 = [(0, 3, False, False,  [Data 0, Data 0, Data 0]),
+                  (3, 4, True, False,   [Pointer 13, Pointer 13, Pointer 3, Pointer 13]),
+                  (7, 5, True, False,   [Data 0, Data 0, Data 0, Data 0, Data 0]),
+                  (12, 1, False, False, [Data 0]),
+                  (13, 3, True, False,  [Pointer 13, Pointer 3, Pointer 3])]
 
 usedheapAlloc5Test :: bool
 usedheapAlloc5Test = (malloc 5 usedheap) == usedheapAlloc5
 
 || Test Case 6 - Used Heap Allocation 6 bytes
 usedheapAlloc6 :: heap
-usedheapAlloc6 = [(3, False, False, [0, 0, 0]),
-                  (4, True, False,  [3, 3, 1, 3]),
-                  (6, True, False,  [0, 0, 0, 0, 0, 0]),
-                  (3, True, False,  [1, 3, 3])]
+usedheapAlloc6 = [(0, 3, False, False, [Data 0, Data 0, Data 0]),
+                  (3, 4, True, False,  [Pointer 13, Pointer 13, Pointer 3, Pointer 13]),
+                  (7, 6, True, False,  [Data 0, Data 0, Data 0, Data 0, Data 0, Data 0]),
+                  (13, 3, True, False, [Pointer 13, Pointer 3, Pointer 3])]
 
 usedheapAlloc6Test :: bool
-usedheapAlloc6Test = (malloc 5 usedheap) == usedheapAlloc5
+usedheapAlloc6Test = (malloc 6 usedheap) == usedheapAlloc6
 
 || Test Case 7 - Garbage Heap Allocation 0 bytes (expect garbage collected)
 garbageheapAlloc0 :: heap
-garbageheapAlloc0 = [(3, False, False,  [1, 1, 1]),
-                     (10, True, False,  [1 | c <- [0..10 - 1]]),
-                     (3, False, False,  [1, 1, 1])]
+garbageheapAlloc0 = [(0, 3, False, False,  [Pointer 3, Pointer 3, Pointer 3]),
+                     (3, 10, True, False,  [Pointer 3 | c <- [0..10 - 1]]),
+                     (13, 3, False, False, [Pointer 3, Data 0, Data 0])]
 
 garbageheapAlloc0Test :: bool
 garbageheapAlloc0Test = (malloc 0 garbageheap) == garbageheapAlloc0
 
 || Test Case 8 - Garbage Heap Allocation 2 bytes
 garbageheapAlloc2 :: heap
-garbageheapAlloc2 = [(2, True, False,   [0, 0]),
-                     (1, False, False,  [1]),
-                     (10, True, False,  [1 | c <- [0..10 - 1]]),
-                     (3, False, False,  [1, 1, 1])]
+garbageheapAlloc2 = [(0, 2, True, False,   [Data 0, Data 0]),
+                     (2, 1, False, False,  [Pointer 3]),
+                     (3, 10, True, False,  [Pointer 3 | c <- [0..10 - 1]]),
+                     (13, 3, False, False, [Pointer 3, Data 0, Data 0])]
 
 garbageheapAlloc2Test :: bool
 garbageheapAlloc2Test = (malloc 2 garbageheap) == garbageheapAlloc2
 
 || Test Case 9 - Garbage Heap Consecutive Allocation 3 bytes (following Test 8)
+|| First block at address 0 shall be garbage collected and allocted into a 3 byte block
 garbageheapAllocConsec23 :: heap
-garbageheapAllocConsec23 = [(2, True, False,   [0, 0]),
-                            (1, False, False,  [1]),
-                            (3, True, False,   [0, 0, 0]),
-                            (10, False, False, [1 | c <- [0..10 - 1]])]
+garbageheapAllocConsec23 = [(0, 3, True, False,   [Data 0, Data 0, Data 0]),
+                            (3, 10, True, False,  [Pointer 3 | c <- [0..10 - 1]]),
+                            (13, 3, False, False, [Pointer 3, Data 0, Data 0])]
 
 garbageheapAllocConsec23Test :: bool
 garbageheapAllocConsec23Test = (malloc 3 (malloc 2 garbageheap)) == garbageheapAllocConsec23
 
 || Test Case 10 - Garbage Heap Consecutive Allocation 1 byte (following Test 9)
+|| First block at address 0, again shall be garbage collected and allocated into a 1 byte block
 garbageheapAllocConsec231 :: heap
-garbageheapAllocConsec231 = [(2, True, False,   [0,0]),
-                             (1, True, False,   [0]),
-                             (13, False, False, [0,0,0,1,1,1,1,1,1,1,1,1,1])]
+garbageheapAllocConsec231 = [(0, 1, True, False,   [Data 0]),
+                             (1, 2, False, False,  [Data 0, Data 0]),
+                             (3, 10, True, False,  [Pointer 3 | c <- [0..10 - 1]]),
+                             (13, 3, False, False, [Pointer 3, Data 0, Data 0])]
 garbageheapAllocConsec231Test :: bool
 garbageheapAllocConsec231Test = (malloc 1 (malloc 3 (malloc 2 garbageheap))) == garbageheapAllocConsec231
 
 || Test Case 11 - Consecutive Coalesce Heap Garbage Collection
 coalesceheapGC :: heap
-coalesceheapGC = [(15, False, False, [3 | c <- [0..15 - 1]]),
-                  (1, True, False,   [3])]
+coalesceheapGC = [(0, 15, False, False, [Pointer 15 | c <- [0..15 - 1]]),
+                  (15, 1, True, False,  [Data 128])]
 coalesceheapGCTest :: bool
 coalesceheapGCTest = (malloc 0 coalesceheap) == coalesceheapGC
 
 || Test Case 12 - Consecutive Coalesce Heap Allocation 1 byte
 coalesceheapAlloc1 :: heap
-coalesceheapAlloc1 = [(1, True, False,   [0]),
-                      (14, False, False, [3 | c <- [0..14 - 1]]),
-                      (1, True, False,   [3])]
+coalesceheapAlloc1 = [(0, 1, True, False,   [Data 0]),
+                      (1, 14, False, False, [Pointer 15 | c <- [0..14 - 1]]),
+                      (15, 1, True, False,  [Data 128])]
 coalesceheapAlloc1Test :: bool
 coalesceheapAlloc1Test = (malloc 1 coalesceheap) == coalesceheapAlloc1
+
+|| Test Case 13 - Consecutive Coalesce Heap second round garbage collection
+|| The block with addr 15 is not pointed to anymore as the previous blocks are
+|| garbage collected.
+coalesceheapAllocConsec161 :: heap
+coalesceheapAllocConsec161 = [(0, 16, True, False, [Data 0 | c <- [0..16 - 1]])]
+coalesceheapAllocConsec161Test :: bool
+coalesceheapAllocConsec161Test = malloc 16 (malloc 1 coalesceheap) == coalesceheapAllocConsec161
+
+|| Test Case 14 - Middle Coalesce Heap Garbage Collection
+coalescemiddleheapGC :: heap
+coalescemiddleheapGC = [(0, 8, True, False,  [Pointer 0 | c <- [0..8 - 1]]),
+                        (8, 4, False, False, [Pointer 0, Data 200, Data 600, Data 800]),
+                        (12, 4, True, False, [Data 100, Data 200, Pointer 12, Data 100])]
+coalescemiddleheapGCTest :: bool
+coalescemiddleheapGCTest = (malloc 0 coalescemiddleheap) == coalescemiddleheapGC
+
+|| Test Case 15 - Middle Coalesce Heap Allocation 4 bytes - full
+coalescemiddleheapAlloc4 :: heap
+coalescemiddleheapAlloc4 = [(0, 8, True, False,  [Pointer 0 | c <- [0..8 - 1]]),
+                            (8, 4, True, False,  [Data 0, Data 0, Data 0, Data 0]),
+                            (12, 4, True, False, [Data 100, Data 200, Pointer 12, Data 100])]
+coalescemiddleheapAlloc4Test :: bool
+coalescemiddleheapAlloc4Test = (malloc 4 coalescemiddleheap) == coalescemiddleheapAlloc4
+
+|| Test Case 16 - Middle Coalesce Heap Allocation 2 bytes
+coalescemiddleheapAlloc2 :: heap
+coalescemiddleheapAlloc2 = [(0, 8, True, False,   [Pointer 0 | c <- [0..8 - 1]]),
+                            (8, 2, True, False,   [Data 0, Data 0]),
+                            (10, 2, False, False, [Data 600, Data 800]),
+                            (12, 4, True, False,  [Data 100, Data 200, Pointer 12, Data 100])]
+coalescemiddleheapAlloc2Test :: bool
+coalescemiddleheapAlloc2Test = (malloc 2 coalescemiddleheap) == coalescemiddleheapAlloc2
