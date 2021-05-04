@@ -89,7 +89,7 @@
 
 Assuming the tape structure below ($c_i \in \Sigma$):
 $$
-\triangleright \;|\; \sqcup\;(q_0) \;|\; c_0 \;|\; c_1 \;|\; ... \;|\; c_n \;|\; \sqcup \;|\; ...
+\triangleright \;|\; \sqcup\;(\leftarrow q_0) \;|\; c_0 \;|\; c_1 \;|\; ... \;|\; c_n \;|\; \sqcup \;|\; ...
 $$
 
 We can design a TM where all undefined transitions leads to a rejection, and the halting state $h$ means accept:
@@ -106,7 +106,7 @@ H & = \{h\} \\
 \end{aligned}
 $$
 
-Note that this TM mentioned above also checks for tape structure correctness. We can further reduce the number of states to a TM with only one state $h$(as both the initial and halting state) and no transition, if we do not need to do so.
+Note that this TM mentioned above also checks for tape structure correctness. We can further reduce the number of states to a TM with only one state $h$ (as both the initial and the halting state) with no transition, if we do not need to verify tape's correctness.
 
 \subsection{}
 \begin{itemize}
@@ -117,11 +117,9 @@ Note that this TM mentioned above also checks for tape structure correctness. We
 \end{itemize}
 
 \subsection{}
-To prove $L_6 \leq L_5$, let $y_6$ be an input of $L_6$ and $y_5$ be an input of $L_5$.
-
-Construct a mapping function $f(y_6) = y_5$, as defined below:
+To prove $L_6 \leq_m L_5$, we construct a mapping function $f(y_6) = y_5$, as defined below:
 \begin{itemize}
-    \item If $y_6 \neq code(M)$ for all $M$, then $f(y_6) = y_6 \notin L_5$
+    \item If $y_6 \neq code(M)$ for all $M$, then $f(y_6) = y_6$
     \item If $y_6 = code(M_6)$, then $f(y_6) = code(M_5)$ where $M_5$ is constructed as follows:
     \SubItem{$M_5$ first reads the tape and compare it with $code(M_5)$}
     \SubItem{If the tape content is the same as $code(M_5)$, $M_5$ will clear the tape, write $010$, reset the tape head, and then simulate $M_6$}
@@ -130,9 +128,9 @@ Construct a mapping function $f(y_6) = y_5$, as defined below:
 
 To prove the reduction correctness, we consider the following three cases,
 \begin{itemize}
-    \item If $y_6 \notin L_6$ and $y_6 \neq code(M)$ for all $M$, $f(y_6) = y_6 \notin M_6$
-    \item If $y_6 \notin L_6$ but $y_6 = code(M)$ for some TM $M$, $f(y_6) = code(M_5)$ which simulates $M$ on $010$ (when read $code(M_5)$ on tape), and \textbf{will NOT halt} as $y_6 = code(M) \notin L_6$. When not reading $code(M_5)$ on tape, by definition of $f$, $M_5$ doesn't halt. Thus, $M_5$ does not halt in either case and $code(M_5) \notin L_5$
-    \item If $y_6 = code(M_6) \in L_6$, $f(y_6) = code(M_5)$ which \textbf{will halt} (when read $code(M_5)$ on the tape) as simulating $code(M_6) \in L_6$ is said to halt on input $010$. Thus, $M_5$ halts on $code(M_5)$ and $code(M_5) \in L_5$
+    \item If $y_6 \notin L_6$ and $y_6 \neq code(M)$ for all $M$, $f(y_6) = y_6 \notin L_5$
+    \item If $y_6 \notin L_6$ but $y_6 = code(M)$ for some TM $M$, $f(y_6) = code(M_5)$ which simulates $M$ on input $010$ (when read $code(M_5)$ on tape), and \textbf{does NOT halt} as $y_6 = code(M) \notin L_6$. When not reading $code(M_5)$ on tape, by definition, $M_5$ does not halt. Thus, $M_5$ does not halt in either case and $code(M_5) \notin L_5$
+    \item If $y_6 = code(M_6) \in L_6$, $f(y_6) = code(M_5)$ which \textbf{does halt} (when read $code(M_5)$ on the tape) as simulating $code(M_6) \in L_6$ is said to halt on input $010$. Thus, $M_5$ halts on $code(M_5)$ and $code(M_5) \in L_5$
 \end{itemize}
 
 \subsection{}
@@ -147,26 +145,25 @@ Hence, we proved $L$ is never decidable.
 \subsubsection{}
 Given $L^-$ is unrecognisable, the statement "$L$ is never recognisable" is \textbf{FALSE}.
 
-We show a counterexample here. Let $L$ be a recognisable but undecidable language (e.g. $HALT$), $L^- = HALT^-$ is not recognisable.
+We show a counter example here. Let $L$ be a recognisable but undecidable language $HALT$, $L^- = HALT^-$ is not recognisable.
 
-Furthermore, it is provable by contradiction that for any recognisable but undecidable language $L_r$ will have an unrecognisable complement $L_r^-$. 
+Furthermore, it is provable by contradiction that any recognisable but undecidable language $L_r$ will have an unrecognisable complement $L_r^-$. 
 
-Assume $L_r^-$ is also recognisable, there exists two TMs $M$ and $M^-$ that recognises $L_r$ and $L_r^-$ respectively. We can combine the two TMs and construct a TM $M_d$ that has two tapes with the same input and simulates $M$ and $M^-$ in parallel. $M_d$ will accept if $M$ accepts and rejects when $M^-$ accepts. Thus, $L_r$ is now decidable, hence contradicts. 
+Assume $L_r^-$ is also recognisable, there exists two TMs $M$ and $M^-$ that recognises $L_r$ and $L_r^-$ respectively. We can combine the two TMs and construct a TM $M_d$ that has two tapes with the same input and simulates $M$ and $M^-$ in parallel. $M_d$ accepts if $M$ accepts and rejects when $M^-$ accepts. Thus, $L_r$ is now decidable, hence contradicts. 
 
-Therefore, we proved that $L_r^-$ must be a unrecognisable as a complement of a recognisable but undecidable language $L_r$.
+Therefore, we proved that $L_r^-$ must be unrecognisable as a complement of a recognisable but undecidable language $L_r$.
 
 With the above proof, $L$ can be any recognisable but undecidable language to make $L^-$ unrecognisable.
-
 
 \section{}
 
 \subsection{}
-Assume the $\pmb{EXTIME}$ complexity class actaully means $\pmb{EXPTIME}$ (a typo).
+Assume the $\pmb{EXTIME}$ complexity class actually means $\pmb{EXPTIME}$ (a typo).
 
 Given a decision problem $A$,
 
 \begin{itemize}
-    \item $A \in \pmb{NP}$ iff. there exists a non-deterministic TM $M$ that accepts all yes-instances of $A$ and rejects all no-instances of $A$ in run-time $O(n^k)$ for a fixed $k$ (in p-time).
+    \item $A \in \pmb{NP}$ iff. there exists a non-deterministic TM $M$ that accepts all yes-instances of $A$ and rejects all no-instances of $A$ in run-time $O(n^k)$ for some fixed $k$ (in p-time).
     \item $A \in \pmb{PSPACE-complete}$ iff.
     \SubItem{$A \in \pmb{PSPACE}$, and} 
     \SubItem{for all $B \in \pmb{PSPACE}$, $B \leq_p A$}
@@ -178,8 +175,8 @@ Given a decision problem $A$,
 
 Also, we append the definitions to complement the definitions of $\pmb{PSPACE-complete}$ and $\pmb{NPSPACE-complete}$
 \begin{itemize}
-    \item $A \in \pmb{PSPACE}$ iff. there is exists a deterministic TM $M$ that solves $A$, and if $M$ runs with input instance $a$, and $|a| \leq n$, then only tape cells $0,1,2...p(n) - 1$ (where $p(n)$ is a polynomial of $n$) are ever accessed during the computation. 
-    \item $A \in \pmb{NPSPACE}$ iff. there is exists a non-deterministic TM $M$ that solves $A$, and if $M$ runs with input instance $a$, and $|a| \leq n$, then only tape cells $0,1,2...p(n) - 1$ (where $p(n)$ is a polynomial of $n$) are ever accessed during the computation. 
+    \item $A \in \pmb{PSPACE}$ iff. there is exists a deterministic TM $M$ that solves $A$, and if $M$ runs with an input instance $a$, and $|a| \leq n$, then only tape cells $0,1,2...\;p(n) - 1$ (where $p(n)$ is a polynomial of $n$) are ever accessed during the computation. 
+    \item $A \in \pmb{NPSPACE}$ iff. there is exists a non-deterministic TM $M$ that solves $A$, and if $M$ runs with an input instance $a$, and $|a| \leq n$, then only tape cells $0,1,2...\;p(n) - 1$ (where $p(n)$ is a polynomial of $n$) are ever accessed during the computation. 
 \end{itemize}
 
 \subsection{}
@@ -234,10 +231,10 @@ With reference to Figure \ref{fig:QBF-PSPACE} above, we prove this recursive alg
 
 Let $n$ be the input QBF formula length.
 
-First, with regards to the recursive stack depth, it is bounded by the number of operators (i.e. $\land, \lor, \lnot, \exists, \forall$) within the formula. Surely, the number of operators would not exceed the total character length $n$ of the formula.
+First, with regards to the recursive algorithm's stack depth, it is bounded by the number of operators (i.e. $\land, \lor, \lnot, \exists, \forall$) within the formula. Surely, the number of operators shall not exceed the total character length $n$ of the formula.
 
-For each stack frame, we run at most one $QBF(\phi, v)$ instance at the same time (and clean up its space usage afterwards). Each $QBF()$ instance needs to preserve the temporary state of $(\phi_T, v_T)$. Similarly, temporary state $\phi_T$ would not exceed the length of the original QBF formula, hence bounded by $n$. The evaluation mapping $v_T$, also would not exceed the number of propositions in the formula. The number of propositions would also be bounded by the total character count of $n$. Thus we conclude that each stack frame's space usage is bounded by $O(n)$.
+For each stack frame, we run at most one $QBF(\phi, v)$ instance at the same time (and clean up its space usage afterwards). Each $QBF()$ instance needs to preserve the temporary state of $(\phi_T, v_T)$. Similarly, temporary formula $\phi_T$ would not exceed the length of the original QBF formula, hence bounded by $n$. Meanwhile, the evaluation mapping $v_T$'s space would not exceed the number of propositions in the formula. The number of propositions would also be bounded by the total character count $n$. Thus we conclude that each stack frame's space usage is bounded by $O(n)$.
 
-The total space usage is bounded by stack depth times each stack frame's space usage, bounded by $O(n \times n) = O(n^2)$. This is in polynomial space hence $QBF(\phi, v) \in PSPACE$.
+The total space usage is bounded by stack depth times each stack frame's space usage, bounded by $O(n \times n) = O(n^2)$. This is within polynomial space hence $QBF \in PSPACE$.
 
 \end{document}
